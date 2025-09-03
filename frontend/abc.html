@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Multi-Cliente WhatsApp Chat</title>
+  <style>
+    body {
+      margin: 0; font-family: sans-serif;
+      display: flex; height: 100vh;
+    }
+    #clientes {
+      width: 30%; background: #f8f8f8;
+      border-right: 1px solid #ddd; overflow-y: auto;
+    }
+    #chat {
+      flex: 1; display: flex; flex-direction: column;
+    }
+    #mensajes {
+      flex: 1; padding: 10px; overflow-y: auto;
+      background: #ece5dd;
+    }
+    .msg {
+      margin: 6px 0; padding: 8px; border-radius: 5px;
+      max-width: 70%; position: relative;
+    }
+    .msg.empresa { background: #dcf8c6; margin-left: auto; text-align: right; }
+    .msg.cliente { background: white; margin-right: auto; text-align: left; }
+    .timestamp {
+      font-size: 10px; color: gray; margin-top: 2px;
+    }
+    #form {
+      display: flex; border-top: 1px solid #ddd;
+    }
+    #form input { flex: 1; padding: 10px; border: none; }
+    #form button { padding: 10px; background: #25D366; color: white; border: none; }
+    .cliente-item {
+      padding: 10px; cursor: pointer; border-bottom: 1px solid #ddd;
+    }
+    .cliente-item.active { background: #e0f7fa; }
+  </style>
+</head>
+<body>
+  <div id="clientes"></div>
+  <div id="chat">
+    <div id="mensajes"></div>
+    <form id="form">
+      <input type="text" id="texto" placeholder="Escribe un mensaje..." autocomplete="off" />
+      <button type="submit">Enviar</button>
+    </form>
+  </div>
+
+  <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+  <script>
+    const socket = io("http://localhost:3000");
+    const lastPhoneIdMap = {};
+  const DEFAULT_PHONE_NUMBER_ID = "619488984585021";
+
+    const clientesDiv = document.getElementById("clientes");
+    const mensajesDiv = document.getElementById("mensajes");
+    const form = document.getElementById("form");
+    const input = document.getElementById("texto");
+
+    let currentCliente = null;
+    const conversations = {}; // { clienteNumero: [mensajes] }
+    const shownMessages = new Set(); // evitar duplicados
+
+    // 👉 Render lista de clientes
+    function renderClientes() {
+      clientesDiv.innerHTML = "";
+      Object.keys(conversations).forEach(cliente => {
+        const div = document.createElement("div");
+        div.className = "cliente-item" + (cliente === currentCliente ? " active" : "");
+        div.innerText = cliente;
+        div.onclick = () => {
+          currentCliente = cliente;
+          renderClientes();
+          renderChat();
+        };
+        clientesDiv.appendChild(div);
+      });
+    }
+
+    // 👉 Render mensajes de un cliente
+    function renderChat() {
+      mensajesDiv.innerHTML = "";
+      if (!currentCliente) return;
+      (conversations[currentCliente] || []).forEach(msg => {
+        const div = document.createElement("div");
+        div.className = "msg " + (msg.from === "empresa" ? "empresa" : "cliente");
+        div.innerHTML = `
+          <div>${msg.content}</div>
+          <div class="timestamp">${msg.status === "pending" ? "⏳ Enviando..." : new Date(msg.timestamp*1000).toLocaleTimeString()}</div>
+        `;
+        mensajesDiv.appendChild(div);
+      });
+      mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+    }
+
+    // 👉 Escuchar mensajes en tiempo real
+    socket.on("new-message", (msg) => {
+      if (shownMessages.has(msg.id)) return; // evitar duplicados
+      shownMessages.add(msg.id);
+
+      const cliente = msg.from === "empresa" ? msg.to : msg.from;
+         if (msg.phone_number_id) {
+    lastPhoneIdMap[cliente] = msg.phone_number_id;
+  }
+      if (!conversations[cliente]) conversations[cliente] = [];
+      
+      // ⚡ Actualizar pending -> sent
+      if (msg.status === "sent" && msg.from === "empresa") {
+        const pending = conversations[cliente].find(m => m.status === "pending");
+        if (pending) {
+          pending.status = "sent";
+          pending.timestamp = msg.timestamp;
+          renderChat();
+          return;
+        }
+      }
+
+   
+
+  
+
+      conversations[cliente].push(msg);
+      if (!currentCliente) currentCliente = cliente;
+      renderClientes();
+      renderChat();
+    });
+
+
+socket.on("update-message", (msg) => {
+  const cliente = msg.to;
+  if (!conversations[cliente]) return;
+
+  const pending = conversations[cliente].find(m => m.status === "pending");
+  if (pending) {
+    pending.status = "sent";
+    pending.id = msg.id;  // reemplazar el id temporal por el real
+    pending.timestamp = msg.timestamp;
+    renderChat();
+  }
+});
+
+
+
+
+
+    // 👉 Enviar mensaje
+  form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!input.value.trim() || !currentCliente) return;
+
+  const text = input.value.trim();
+  input.value = "";
+
+  const phone_number_id = lastPhoneIdMap[currentCliente] || DEFAULT_PHONE_NUMBER_ID;
+
+  // 👉 Crear mensaje pendiente
+  const tempId = "temp-" + Date.now();
+  const pendingMsg = {
+    id: tempId,
+    from: "empresa",
+    to: currentCliente,
+    content: text,
+    status: "pending",
+    timestamp: Math.floor(Date.now() / 1000),
+  };
+
+  if (!conversations[currentCliente]) conversations[currentCliente] = [];
+  conversations[currentCliente].push(pendingMsg);
+  renderChat();
+
+  // 👉 Enviar al backend
+  await fetch("/send-message", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      to: currentCliente,
+      text,
+      phone_number_id,
+    }),
+  });
+});
+
+
+  </script>
+</body>
+</html>

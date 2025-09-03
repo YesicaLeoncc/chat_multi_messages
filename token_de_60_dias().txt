@@ -1,0 +1,7 @@
+
+id:phone_number : 619488984585021
+
+
+token_de_60_dias : EAAO3MB9z5Q4BPNeOR3UjvMKF50InRPIn8iF6HbVGgT0rUEqnJmX2ZBnZCTjrWqJRaOh52nhqdxzFmYIZB9dvAhQXXnePKVVnyhS3yOVVGmgPstkCkkaF4mlCbFAb7OEjZCKTz8YzEkQudCz9ELkJ79YElWbZBNZAvC4VEEa0pNcMaWZAKBwIyeSZB3vJtui760CFHcQZCq2cYkO8gqxOkzqSj6n1cxCQtwXkZCAZA2L
+
+webhook_del_whattssapp(aqui se recepciona las solitudes) : https://03fdlklv-3000.brs.devtunnels.ms/webhook

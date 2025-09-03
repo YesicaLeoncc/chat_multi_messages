@@ -1,0 +1,401 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat WhatsApp RealTime</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    #container {
+      max-width: 400px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #chat {
+      padding: 10px;
+      height: 70vh;
+      overflow-y: scroll;
+      border-bottom: 1px solid #ddd;
+    }
+    .message {
+      padding: 8px;
+      margin: 6px 0;
+      border-radius: 6px;
+      background: #dcf8c6;
+      position: relative;
+      word-wrap: break-word;
+    }
+    .timestamp {
+      font-size: 10px;
+      color: #999;
+      position: absolute;
+      bottom: 4px;
+      right: 6px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+    }
+    input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      outline: none;
+    }
+    button {
+      background: #25D366;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #1ebe5d;
+    }
+    #empresa-info {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: #e0f7fa;
+      color: #004d40;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 999;
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 350px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="chat"></div>
+
+    <form id="form">
+      <input type="text" id="to" placeholder="Número del cliente" required />
+      <input type="text" id="text" placeholder="Tu mensaje personalizado" required />
+      <button type="submit">Enviar</button>
+    </form>
+  </div>
+
+  <div id="empresa-info">
+    📱 <strong>Celular empresa:</strong> +51963570527 – <strong>Depilzone</strong><br>
+    <em style="font-size: 11px;">(NOTA : para esta simulación el cliente es quien inicia la conversación)</em>
+  </div>
+
+  <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+
+
+
+ 
+
+
+<script>
+  const socket = io('http://localhost:3000');
+
+  const lastPhoneIdMap = {};
+  const DEFAULT_PHONE_NUMBER_ID = "619488984585021";
+
+  const chat = document.getElementById('chat');
+
+  // ⇒ id -> div (para deduplicar y actualizar)
+  const messageMap = new Map();
+  // ⇒ último “pending” de empresa para convertirlo a “sent”
+  let lastPendingDiv = null;
+
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const to = document.getElementById('to').value;
+    const text = document.getElementById('text').value;
+    const phone_number_id = lastPhoneIdMap[to] || DEFAULT_PHONE_NUMBER_ID;
+
+    const res = await fetch('/send-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, text, phone_number_id }),
+    });
+
+    const json = await res.json();
+    if (!json.success) alert('❌ Error al enviar');
+    document.getElementById('text').value = '';
+  });
+
+  socket.on('new-message', (msg) => {
+    // 🔎 log para depurar
+    // console.log('recv', msg.id, msg.from, msg.status, msg.content);
+
+    // 1) Mensaje "pending" (empresa) → dibujar y guardar referencia
+    if (msg.status === "pending") {
+      const div = createDiv(msg, "⏳ Enviando...");
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      lastPendingDiv = div;
+      return;
+    }
+
+    // 2) Si ya tenemos este id real, ignorar duplicados
+    if (messageMap.has(msg.id)) return;
+
+    // 3) “sent” de empresa → actualizar el último pending y registrar con el id real
+    if (msg.status === "sent" && msg.from === "empresa" && lastPendingDiv) {
+      lastPendingDiv.querySelector('.timestamp').innerText =
+        new Date(msg.timestamp * 1000).toLocaleTimeString();
+      messageMap.set(msg.id, lastPendingDiv); // ahora queda asociado al id real
+      lastPendingDiv = null;
+      return;
+    }
+
+    // 4) Mensajes del cliente (o cualquier otro no pending) → dibujar si no existe
+    const div = createDiv(
+      msg,
+      new Date(msg.timestamp * 1000).toLocaleTimeString()
+    );
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    messageMap.set(msg.id, div);
+
+    if (msg.phone_number_id) lastPhoneIdMap[msg.from] = msg.phone_number_id;
+  });
+
+  function createDiv(msg, timeText) {
+    const div = document.createElement('div');
+    div.className = 'message';
+    if (msg.from === 'empresa') {
+      div.style.background = '#dcf8c6';
+      div.style.textAlign = 'right';
+    } else {
+      div.style.background = '#ffffff';
+      div.style.textAlign = 'left';
+    }
+    div.innerHTML = `
+      <strong>De: ${msg.from}</strong><br>
+      <div>${msg.content}</div>
+      <div class="timestamp">${timeText}</div>
+    `;
+    return div;
+  }
+</script>
+
+
+
+
+
+
+
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat WhatsApp RealTime</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+
+    #container {
+      max-width: 400px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    #chat {
+      padding: 10px;
+      height: 70vh;
+      overflow-y: scroll;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .message {
+      padding: 8px;
+      margin: 6px 0;
+      border-radius: 6px;
+      background: #dcf8c6;
+      position: relative;
+      word-wrap: break-word;
+    }
+
+    .timestamp {
+      font-size: 10px;
+      color: #999;
+      position: absolute;
+      bottom: 4px;
+      right: 6px;
+    }
+
+    .raw {
+      font-size: 10px;
+      color: #333;
+      margin-top: 5px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      outline: none;
+    }
+
+    button {
+      background: #25D366;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #1ebe5d;
+    }
+
+ #empresa-info {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: #e0f7fa;
+  color: #004d40;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 999;
+  font-family: 'Segoe UI', sans-serif;
+  max-width: 350px;
+  line-height: 1.4;
+}
+
+
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="chat"></div>
+
+    <form id="form">
+  <input type="text" id="to" placeholder="Número del cliente" required />
+  <input type="text" id="text" placeholder="Tu mensaje personalizado" required />
+  <button type="submit">Enviar</button>
+</form>
+  </div>
+
+  <div id="empresa-info">
+  📱 <strong>Celular empresa:</strong> +51963570527 – <strong>Depilzone</strong><br>
+  <em style="font-size: 11px;">(NOTA : para esta simulación el cliente es quien inicia la conversación)</em>
+</div>
+
+
+
+  <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+<script>
+  const socket = io('http://localhost:3000'); // conecta con tu backend
+
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const to = document.getElementById('to').value;
+    const text = document.getElementById('text').value;
+    const phone_number_id = lastPhoneIdMap[to]; // usa el mismo con el que llegó
+
+
+    const res = await fetch('/send-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, text , phone_number_id}),
+    });
+
+    const json = await res.json();
+    if (!json.success) {
+      alert('❌ Error al enviar');
+    }
+
+    // Limpia el input
+    document.getElementById('text').value = '';
+  });
+
+  const chat = document.getElementById('chat');
+
+  socket.on('new-message', (msg) => {
+    const div = document.createElement('div');
+    div.className = 'message';
+
+    if (msg.from === 'empresa') {
+      div.style.background = '#dcf8c6';
+      div.style.textAlign = 'right';
+    } else {
+      div.style.background = '#ffffff';
+      div.style.textAlign = 'left';
+    }
+
+    div.innerHTML = `
+      <strong>De: ${msg.from}</strong><br>
+      <div>${msg.content}</div>
+      <div class="timestamp">${new Date(msg.timestamp * 1000).toLocaleTimeString()}</div>
+     
+    `;
+
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    lastPhoneIdMap[msg.from] = msg.phone_number_id; // guardar con qué línea llegó
+  });
+</script>
+
+</body>
+</html>
+-->
+
+
+<!-- 
+<details>
+  <summary>Ver RAW</summary>
+  <pre class="raw">${JSON.stringify(msg.raw, null, 2)}</pre>
+</details> 
+-->
