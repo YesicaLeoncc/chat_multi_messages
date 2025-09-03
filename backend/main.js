@@ -27,7 +27,7 @@ const VERIFY_TOKEN=process.env.VERIFY_TOKEN; // CUALQUIER CADENA QUE LE PUEDAS A
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use('/frontend', express.static(path.join(__dirname, '../frontend')));
+
 
 io.on('connection', (socket) => {
   console.log('Cliente conectado a socket.io');
