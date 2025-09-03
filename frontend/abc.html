@@ -9,12 +9,15 @@
       display: flex; height: 100vh;
     }
     #clientes {
-      width: 30%; background: #f8f8f8;
-      border-right: 1px solid #ddd; overflow-y: auto;
-    }
-    #chat {
-      flex: 1; display: flex; flex-direction: column;
-    }
+  width: 30%; background: #f8f8f8;
+  border-right: 1px solid #ddd; overflow-y: auto;
+  margin-top: 60px; /* altura del header */
+}
+#chat {
+  flex: 1; display: flex; flex-direction: column;
+  margin-top: 60px; /* altura del header */
+}
+
     #mensajes {
       flex: 1; padding: 10px; overflow-y: auto;
       background: #ece5dd;
@@ -40,6 +43,14 @@
   </style>
 </head>
 <body>
+   <div style="width:100%; padding:10px; background:#25D366; color:white; text-align:center;">
+    <div><strong>WhatsApp Negocio:</strong> +51 906232302</div>
+    <div style="font-size:12px; margin-top:5px;">
+      solo se realiza la conversacion cuando el cliente le envia un mensaje
+      Esta app te permite enviar y recibir mensajes en tiempo real con múltiples clientes. Haz clic en un cliente a la izquierda para ver el chat.
+    </div>
+  </div>
+  
   <div id="clientes"></div>
   <div id="chat">
     <div id="mensajes"></div>
@@ -51,7 +62,7 @@
 
   <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
   <script>
-    const socket = io("http://localhost:3000");
+    const socket = io("https://chat-multi-messages.onrender.com");
     const lastPhoneIdMap = {};
   const DEFAULT_PHONE_NUMBER_ID = "619488984585021";
 
