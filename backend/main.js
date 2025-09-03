@@ -57,7 +57,7 @@ function rememberId(id) {
 }
 
 
-const __dirname = path.resolve();
+
 
 // Servir carpeta frontend
 app.use("/frontend", express.static(path.join(__dirname, "frontend")));
