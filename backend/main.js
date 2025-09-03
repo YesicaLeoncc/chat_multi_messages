@@ -60,8 +60,8 @@ function rememberId(id) {
 
 
 
-// 📌 servir la carpeta frontend
-app.use("/frontend", express.static(path.join(__dirname, "frontend")));
+// sirve la carpeta frontend
+app.use("/frontend", express.static(path.join(__dirname, "../frontend")));
 
 
 
