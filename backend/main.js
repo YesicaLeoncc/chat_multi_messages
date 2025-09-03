@@ -58,9 +58,7 @@ function rememberId(id) {
 
 
 
-// 🔹 reconstruir __dirname en ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
 
 // 📌 servir la carpeta frontend
 app.use("/frontend", express.static(path.join(__dirname, "frontend")));
